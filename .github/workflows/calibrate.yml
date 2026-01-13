@@ -1,0 +1,29 @@
+name: Generate Language Ratio CSV
+on:
+  workflow_dispatch: # Manual trigger
+
+jobs:
+  calibrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install SCC
+        run: |
+          curl -L -o scc.zip https://github.com/boyter/scc/releases/download/v3.1.0/scc-3.1.0-x86_64-unknown-linux-gnu.zip
+          unzip scc.zip && sudo mv scc /usr/local/bin/
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Run Calibration
+        run: python3 calibrate_ratios.py
+
+      - name: Upload Results CSV
+        uses: actions/upload-artifact@v4
+        with:
+          name: language-gearing-report
+          path: gearing_calibration.csv

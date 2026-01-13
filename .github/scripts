@@ -1,0 +1,58 @@
+import subprocess
+import json
+import csv
+import os
+
+# Configuration: List of comparable repo pairs
+# You can add more pairs here to increase the accuracy of the average delta
+REPO_PAIRS = [
+    {
+        "id": "RealWorld_Conduit",
+        "java_url": "https://github.com/gothinkster/spring-boot-realworld-example-app",
+        "go_url": "https://github.com/gothinkster/golang-gin-realworld-example-app"
+    }
+]
+
+def get_logical_code(url, lang_key):
+    folder = f"temp_{lang_key}_{os.getpid()}"
+    subprocess.run(["git", "clone", "--depth", "1", url, folder], check=True, capture_output=True)
+    
+    # Run scc in JSON mode
+    result = subprocess.run(["scc", "-f", "json", folder], capture_output=True, text=True)
+    data = json.loads(result.stdout)
+    
+    # Clean up folder immediately to save space
+    subprocess.run(["rm", "-rf", folder])
+    
+    for entry in data:
+        # scc uses capitalized names (e.g., 'Java', 'Go')
+        if entry['Name'].lower() == lang_key.lower():
+            return int(entry['Code'])
+    return 0
+
+# Prepare CSV Data
+csv_rows = []
+total_ratio = 0
+
+for pair in REPO_PAIRS:
+    print(f"Analyzing {pair['id']}...")
+    java_code = get_logical_code(pair['java_url'], "Java")
+    go_code = get_logical_code(pair['go_url'], "Go")
+    
+    if java_code > 0:
+        delta_ratio = round(go_code / java_code, 4)
+        total_ratio += delta_ratio
+        csv_rows.append({
+            "Project_ID": pair['id'],
+            "Java_Logical_Code": java_code,
+            "Go_Logical_Code": go_code,
+            "Delta_Ratio": delta_ratio
+        })
+
+# Write to CSV
+with open('gearing_calibration.csv', 'w', newline='') as f:
+    writer = csv.DictWriter(f, fieldnames=["Project_ID", "Java_Logical_Code", "Go_Logical_Code", "Delta_Ratio"])
+    writer.writeheader()
+    writer.writerows(csv_rows)
+
+print("Calibration complete. CSV generated.")

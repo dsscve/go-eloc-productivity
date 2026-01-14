@@ -21,7 +21,7 @@ jobs:
           python-version: '3.10'
 
       - name: Run Calibration
-        run: python3 scripts/calibrate_ratios.py
+        run: python3 calibrate_ratios.py
 
       - name: Upload Results CSV
         uses: actions/upload-artifact@v4
